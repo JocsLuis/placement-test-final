@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <title>CEVAZ Oral Placement Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/annyang/2.6.1/annyang.min.js"></script>
+    <style>
+      :root {
+        --blue: #004a99;
+        --gold: #f4b400;
+        --red: #d9534f;
+        --green: #5cb85c;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: sans-serif;
+        background: #f0f2f5;
+        display: flex;
+        justify-content: center;
+        padding: 10px;
+        margin: 0;
+        min-height: 100vh;
+      }
+      .container {
+        background: white;
+        max-width: 550px;
+        width: 100%;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+      video {
+        width: 100%;
+        border-radius: 10px;
+        background: #000;
+        margin-bottom: 10px;
+        transform: scaleX(-1);
+        border: 2px solid var(--blue);
+      }
+      input,
+      select,
+      button {
+        width: 100%;
+        padding: 12px;
+        margin: 8px 0;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+      }
+      .btn-next {
+        background: var(--blue);
+        color: white;
+        border: none;
+        font-weight: bold;
+        cursor: pointer;
+      }
+      .btn-stop {
+        background: var(--red);
+        color: white;
+        border: none;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+      .btn-mic {
+        background: var(--red);
+        color: white;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: none;
+        font-size: 32px;
+        cursor: pointer;
+        transition: 0.3s;
+        margin: 10px auto;
+        display: block;
+      }
+      .btn-mic.active {
+        background: var(--green);
+        animation: pulse 1.5s infinite;
+      }
+      .btn-mic:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        70% {
+          transform: scale(1.1);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+      .hidden {
+        display: none;
+      }
+      #q-text {
+        min-height: 80px;
+        font-size: 1.1rem;
+        color: var(--blue);
+        font-weight: bold;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1.4;
+      }
+      textarea {
+        width: 100%;
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px dashed #ccc;
+        background: #f9f9f9;
+        font-size: 1rem;
+        resize: none;
+        color: #444;
+        min-height: 120px;
+      }
+      #status-msg {
+        font-weight: bold;
+        margin: 10px 0;
+        color: #666;
+        font-size: 0.9rem;
+      }
+      #progress {
+        font-size: 0.85rem;
+        color: #888;
+        margin-bottom: 10px;
+      }
+      .mobile-indicator {
+        background: var(--gold);
+        color: #333;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        display: inline-block;
+        margin-bottom: 10px;
+      }
+      #v-monitor {
+        width: 120px;
+        height: auto;
+        border: 2px solid var(--red);
+        margin: 0 auto 10px auto;
+        display: block;
+      }
+      #upload-status {
+        font-weight: bold;
+        margin: 15px 0;
+      }
+      #summary {
+        text-align: left;
+        background: #e8f0fe;
+        padding: 15px;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        margin: 15px 0;
+      }
+      .error-msg {
+        color: var(--red);
+        font-size: 0.85rem;
+        margin: 5px 0;
+      }
+      #device-info {
+        font-size: 0.75rem;
+        color: #aaa;
+        margin-top: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div id="setup">
+        <h2 style="color: var(--blue)">Oral Placement Test</h2>
+        <div id="device-badge">
+          <span class="mobile-indicator" id="device-type"
+            >Detectando dispositivo...</span
+          >
+        </div>
+        <p style="font-size: 0.9rem">
+          Asegúrate de estar en un lugar iluminado.
+        </p>
+        <video id="v-setup" autoplay muted playsinline></video>
+        <input type="text" id="stdName" placeholder="Nombre Completo" />
+        <input type="text" id="stdId" placeholder="Cédula de Identidad" />
+        <select id="sede">
+          <option value="LAS MERCEDES">LAS MERCEDES</option>
+          <option value="LA LIMPIA">LA LIMPIA</option>
+          <option value="SAN FRANCISCO">SAN FRANCISCO</option>
+          <option value="CEVAZ DIGITAL">CEVAZ DIGITAL</option>
+        </select>
+        <button class="btn-next" onclick="initTest()">EMPEZAR EXAMEN</button>
+        <p id="device-info"></p>
+      </div>
+
+      <div id="test" class="hidden">
+        <video id="v-monitor" autoplay muted playsinline></video>
+        <div id="progress"></div>
+        <div id="q-text"></div>
+
+        <button class="btn-mic" id="m-btn" onclick="toggleMic()">🎤</button>
+        <p id="status-msg">Toca el micrófono y habla para responder</p>
+
+        <textarea
+          id="t-area"
+          rows="5"
+          placeholder="Tu respuesta aparecerá aquí al hablar..."
+          readonly
+        ></textarea>
+
+        <button class="btn-next" id="n-btn" onclick="saveAndNext()" disabled>
+          SIGUIENTE PREGUNTA
+        </button>
+        <button class="btn-stop" onclick="finish()">
+          FINALIZAR EVALUACIÓN
+        </button>
+      </div>
+
+      <canvas
+        id="canvas-photo"
+        class="hidden"
+        width="640"
+        height="480"
+      ></canvas>
+
+      <div id="report" class="hidden">
+        <h2 style="color: var(--blue)">Enviando Resultados...</h2>
+        <p id="upload-status">⏳ Procesando reporte y foto...</p>
+        <div id="summary"></div>
+        <button class="btn-next" onclick="location.reload()">SALIR</button>
+      </div>
+    </div>
+
+    <script>
+      const SCRIPT_URL =
+        "https://script.google.com/macros/s/AKfycbwvQyDXCbxYQBRZMFe-XiHYUtQhuJZQqUgUgDGX4WNa6KDBSGXYELrXbVIyq1L4yteO/exec";
+
+      const isMobile =
+        /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        window.matchMedia("(max-width: 768px)").matches;
+
+      const questions = [
+        {
+          lvl: 1,
+          q: "What is your full name, where are you from, and what do you do?, Describe your family",
+        },
+        {
+          lvl: 2,
+          q: "Describe your typical morning routine. What time do you wake up and what do you do?",
+        },
+        {
+          lvl: 3,
+          q: "What did you do on your last vacation or birthday? Tell me about it.",
+        },
+        {
+          lvl: 4,
+          q: "Tell me about your favorite hobbies. How often do you do them and why do you like them?",
+        },
+        {
+          lvl: 5,
+          q: "Compare your hometown to another city you know. Which one is better to live in and why?",
+        },
+        {
+          lvl: 6,
+          q: "Have you ever traveled to a different country or tried a very unusual food? Tell me about that experience.",
+        },
+        {
+          lvl: 7,
+          q: "What is something you used to do when you were a child that you don't do anymore? How has your life changed?",
+        },
+        {
+          lvl: 8,
+          q: "What will you do if you have a lot of free time next weekend? Do you have any special plans?",
+        },
+        {
+          lvl: 9,
+          q: "If you won the lottery tomorrow, what would you do with the money and how would your life change?",
+        },
+        {
+          lvl: 10,
+          q: "How long have you been studying English or working in your current job? What do you enjoy most about it?",
+        },
+        {
+          lvl: 11,
+          q: "The pyramids in Egypt are a great mystery. How could they have been built without modern technology? Discuss what must have been done by the workers.",
+        },
+        {
+          lvl: 12,
+          q: "Think about a mistake you made in the past. What would have happened if you had done things differently?",
+        },
+        {
+          lvl: 13,
+          q: "Do you believe that social media brings people closer together or makes them more isolated? Explain your point of view.",
+        },
+        {
+          lvl: 14,
+          q: "What are some things you look forward to doing in the next five years, and what do you hope to have achieved by then?",
+        },
+        {
+          lvl: 15,
+          q: "Describe a global issue that you feel strongly about (like climate change or technology). What is being done to solve it, and what more should be done?",
+        },
+        {
+          lvl: 16,
+          q: "If you had chosen a completely different career path or field of study when you were younger, how do you think your life would be different today?",
+        },
+        {
+          lvl: 17,
+          q: "Some people argue that formal education is becoming less relevant in the modern world due to the internet. To what extent do you agree or disagree?",
+        },
+        {
+          lvl: 18,
+          q: "Looking at your life so far, what are some things you wish you had known when you were younger, and why?",
+        },
+        {
+          lvl: 19,
+          q: "It is often said that history repeats itself. Can you think of any current events that mirror the past? How can society avoid making the same mistakes?",
+        },
+        {
+          lvl: 20,
+          q: "If you were responsible for solving a major global crisis, such as economic inequality or an environmental disaster, what policies would you implement and how would you handle the public reaction?",
+        },
+      ];
+
+      let currentIdx = 0,
+        results = [],
+        listening = false,
+        stream,
+        studentPhoto = "";
+
+      function updateDeviceBadge() {
+        const badge = document.getElementById("device-type");
+        const info = document.getElementById("device-info");
+        if (isMobile) {
+          badge.textContent = "📱 MODO MÓVIL";
+          badge.style.background = "#4CAF50";
+          badge.style.color = "white";
+          info.textContent = "Optimizado para dispositivos móviles";
+        } else {
+          badge.textContent = "💻 MODO PC";
+          badge.style.background = "var(--gold)";
+          info.textContent = "Optimizado para computadoras";
+        }
+      }
+
+      window.onload = async () => {
+        updateDeviceBadge();
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+          });
+          document.getElementById("v-setup").srcObject = stream;
+        } catch (e) {
+          alert(
+            "Acceso a cámara/audio denegado. Por favor permite los permisos y recarga.",
+          );
+        }
+      };
+
+      async function initTest() {
+        if (
+          !document.getElementById("stdName").value ||
+          !document.getElementById("stdId").value
+        ) {
+          return alert("Por favor ingresa tus datos.");
+        }
+
+        const video = document.getElementById("v-setup");
+        const canvas = document.getElementById("canvas-photo");
+        canvas
+          .getContext("2d")
+          .drawImage(video, 0, 0, canvas.width, canvas.height);
+        studentPhoto = canvas.toDataURL("image/jpeg").split(",")[1];
+
+        document.getElementById("v-monitor").srcObject = stream;
+        document.getElementById("setup").classList.add("hidden");
+        document.getElementById("test").classList.remove("hidden");
+        loadStep();
+      }
+
+      function loadStep() {
+        document.getElementById("progress").innerText =
+          `Pregunta ${currentIdx + 1} de ${questions.length}`;
+        document.getElementById("q-text").innerText = questions[currentIdx].q;
+        document.getElementById("t-area").value = "";
+        document.getElementById("n-btn").disabled = true;
+        document.getElementById("status-msg").innerText =
+          "Toca el micrófono y habla para responder";
+      }
+
+      function configureAnnyangForDevice() {
+        annyang.abort();
+
+        if (isMobile) {
+          annyang.setLanguage("es-ES");
+          annyang.addCallback("soundEnd", function () {
+            if (listening) {
+              annyang.start({ autoRestart: false, continuous: false });
+            }
+          });
+          annyang.addCallback("result", function (phrases) {
+            if (phrases && phrases.length > 0) {
+              document.getElementById("t-area").value += phrases[0] + " ";
+              document.getElementById("n-btn").disabled = false;
+            }
+          });
+        } else {
+          annyang.setLanguage("en-US");
+          annyang.addCallback("result", function (phrases) {
+            if (phrases && phrases.length > 0) {
+              document.getElementById("t-area").value += phrases[0] + " ";
+              document.getElementById("n-btn").disabled = false;
+            }
+          });
+        }
+
+        annyang.addCallback("error", function (err) {
+          console.error("Annyang error:", err.error);
+          if (err.error === "network") {
+            document.getElementById("status-msg").innerText =
+              "Error: Sin conexión a Internet";
+          } else if (err.error === "not-allowed") {
+            document.getElementById("status-msg").innerText =
+              "Permiso de micrófono denegado";
+          }
+        });
+      }
+
+      function toggleMic() {
+        if (!listening) {
+          if (annyang) {
+            configureAnnyangForDevice();
+
+            const startConfig = isMobile
+              ? { autoRestart: false, continuous: false }
+              : { autoRestart: true, continuous: true };
+
+            annyang.start(startConfig);
+            listening = true;
+            document.getElementById("m-btn").classList.add("active");
+            document.getElementById("status-msg").innerText = isMobile
+              ? "Escuchando... (toca para detener)"
+              : "ESCUCHANDO...";
+          } else {
+            alert("Speech recognition no disponible en este navegador.");
+          }
+        } else {
+          stopMic();
+        }
+      }
+
+      function stopMic() {
+        if (annyang) annyang.abort();
+        listening = false;
+        document.getElementById("m-btn").classList.remove("active");
+        document.getElementById("status-msg").innerText = "Micrófono pausado";
+      }
+
+      function saveAndNext() {
+        stopMic();
+        const transcript = document.getElementById("t-area").value.trim();
+
+        if (!transcript) {
+          alert(
+            "Por favor responde la pregunta usando el micrófono antes de continuar.",
+          );
+          return;
+        }
+
+        results.push({
+          lvl: questions[currentIdx].lvl,
+          q: questions[currentIdx].q,
+          a: transcript,
+        });
+
+        if (currentIdx === questions.length - 1) {
+          finish();
+        } else {
+          currentIdx++;
+          loadStep();
+        }
+      }
+
+      function finish() {
+        stopMic();
+
+        const transcript = document.getElementById("t-area").value.trim();
+        if (
+          transcript &&
+          (!results.length ||
+            results[results.length - 1].lvl !== questions[currentIdx].lvl)
+        ) {
+          results.push({
+            lvl: questions[currentIdx].lvl,
+            q: questions[currentIdx].q,
+            a: transcript,
+          });
+        }
+
+        document.getElementById("test").classList.add("hidden");
+        document.getElementById("report").classList.remove("hidden");
+
+        if (stream) stream.getTracks().forEach((t) => t.stop());
+
+        upload();
+      }
+
+      async function upload() {
+        const finalLevel =
+          results.length > 0 ? results[results.length - 1].lvl : 0;
+        const payload = {
+          name: document.getElementById("stdName").value,
+          id: document.getElementById("stdId").value,
+          sede: document.getElementById("sede").value,
+          fecha: new Date().toLocaleDateString(),
+          level: finalLevel,
+          transcript: results.map((r) => `[Lvl ${r.lvl}] ${r.a}`).join("\n\n"),
+          photo: studentPhoto,
+          deviceType: isMobile ? "mobile" : "pc",
+        };
+
+        try {
+          await fetch(SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          document.getElementById("upload-status").innerText =
+            "✅ ¡Prueba completada!";
+          document.getElementById("summary").innerHTML = `
+            <strong>Nombre:</strong> ${payload.name}<br>
+            <strong>Cédula:</strong> ${payload.id}<br>
+            <strong>Sede:</strong> ${payload.sede}<br>
+            <strong>Nivel:</strong> ${finalLevel}<br>
+            <strong>Dispositivo:</strong> ${isMobile ? "Móvil" : "PC"}<br>
+            <strong>Respuestas:</strong> ${results.length}/${questions.length}
+        `;
+        } catch (e) {
+          document.getElementById("upload-status").innerText =
+            "❌ Error al enviar. Verifica tu conexión.";
+        }
+      }
+    </script>
+  </body>
+</html>
